@@ -1,2 +1,5 @@
 # goxforce
-Golang library to access IBM X-Force Exchange
+
+Golang library to implement the IBM X-Force Exchange [restful protocol](https://xforce-api.mybluemix.net/doc/) - currently implemented API 1.0.0 build 5342.
+
+
