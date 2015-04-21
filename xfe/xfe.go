@@ -8,6 +8,7 @@ import (
 	"github.com/demisto/goxforce"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -16,14 +17,16 @@ var url string
 var lang string
 var cmd string
 var q string
+var q2 string
 var v bool
 
 func init() {
 	flag.StringVar(&token, "token", os.Getenv("XFE_TOKEN"), "The token to use for X-Force access. Can be provided as an environment variable XFE_TOKEN. If not specified, anonymous access will be used.")
 	flag.StringVar(&url, "url", goxforce.DefaultURL, "URL of the X-Force API to be used.")
 	flag.StringVar(&lang, "lang", goxforce.DefaultLang, "The language to accept responses in")
-	flag.StringVar(&cmd, "cmd", "", "The command to execute: listApps/searchApp/appDetails/ipr/iprhist/iprmalware/resolve/malware")
+	flag.StringVar(&cmd, "cmd", "", "The command to execute: listApps/searchApp/appDetails/ipr/iprhist/iprmalware/resolve/malware/malwarefamily/vulns/searchVulns/xfid/cve")
 	flag.StringVar(&q, "q", "", "The search or parameter for the command")
+	flag.StringVar(&q2, "q2", "", "Additional parameter for commands that might require 2 parameters")
 	flag.BoolVar(&v, "v", false, "Verbosity. If specified will trace the requests.")
 }
 
@@ -92,6 +95,39 @@ func main() {
 			os.Exit(1)
 		}
 		res, err = c.MalwareDetails(q)
+	case "malwarefamily":
+		if q == "" {
+			fmt.Fprintf(os.Stderr, "You must specify the name of the malware family\n")
+			os.Exit(1)
+		}
+		res, err = c.MalwareFamilyDetails(q)
+	case "vulns":
+		if q == "" {
+			q = "10"
+		}
+		limit, convErr := strconv.Atoi(q)
+		check(convErr)
+		res, err = c.Vulnerabilities(limit)
+	case "searchvulns":
+		if q == "" {
+			fmt.Fprintf(os.Stderr, "You must specify the text to search\n")
+			os.Exit(1)
+		}
+		res, err = c.VulnerabilitiesFullText(q, q2)
+	case "xfid":
+		if q == "" {
+			fmt.Fprintf(os.Stderr, "You must specify the XFID to retrieve\n")
+			os.Exit(1)
+		}
+		xfid, convErr := strconv.Atoi(q)
+		check(convErr)
+		res, err = c.VulnerabilityByXFID(xfid)
+	case "cve":
+		if q == "" {
+			fmt.Fprintf(os.Stderr, "You must specify the CVE to retrieve\n")
+			os.Exit(1)
+		}
+		res, err = c.VulnerabilityByCVE(q)
 	default:
 		fmt.Fprintf(os.Stderr, "Command [%s] is not recognized\n", cmd)
 		os.Exit(1)

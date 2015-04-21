@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -434,6 +435,67 @@ type MalwareResp struct {
 	Malware Malware `json:"malware"`
 }
 
+type FamilyMalware struct {
+	MD5      string    `json:"md5"`
+	MimeType string    `json:"mimetype"`
+	Created  time.Time `json:"created"`
+}
+
+type MalwareFamilyResp struct {
+	FirstSeen time.Time       `json:"firstseen"`
+	LastSeen  time.Time       `json:"lastseen"`
+	Malware   []FamilyMalware `json:"malware"`
+}
+
+type Reference struct {
+	LinkTarget  string `json:"link_target"`
+	LinkName    string `json:"link_name"`
+	Description string `json:"description"`
+}
+
+type Signature struct {
+	Coverage     string    `json:"coverage"`
+	CoverageDate time.Time `json:"coverage_date"`
+}
+
+type Vulnerability struct {
+	Type                  string      `json:"type"`
+	Xfdbid                int         `json:"xfdbid"`
+	Updateid              int         `json:"updateid"`
+	Updated               bool        `json:"updated"`
+	Variant               string      `json:"variant"`
+	Title                 string      `json:"title"`
+	Description           string      `json:"description"`
+	DescriptionFmt        string      `json:"description_fmt"`
+	RiskLevel             float32     `json:"risk_level"`
+	AccessVector          string      `json:"access_vector"`
+	AccessComplexity      string      `json:"access_complexity"`
+	Authentication        string      `json:"authentication"`
+	ConfidentialityImpact string      `json:"confidentiality_impact"`
+	IntegrityImpact       string      `json:"integrity_impact"`
+	AvailabilityImpact    string      `json:"availability_impact"`
+	TemporalScore         float32     `json:"temporal_score"`
+	RemediationLevel      string      `json:"remediation_level"`
+	Remedy                string      `json:"remedy"`
+	RemedyFmt             string      `json:"remedy_fmt"`
+	Reported              time.Time   `json:"reported"`
+	Tagname               string      `json:"tagname"`
+	Stdcode               []string    `json:"stdcode"`
+	PlatformsAffected     []string    `json:"platforms_affected"`
+	PlatformsDependent    []string    `json:"platforms_dependent"`
+	Exploitability        string      `json:"exploitability"`
+	Consequences          string      `json:"consequences"`
+	References            []Reference `json:"references"`
+	Signatures            []Signature `json:"signatures"`
+	ReportConfidence      string      `json:"report_confidence"`
+}
+
+type VulnerabilitySearchResp struct {
+	TotalRows int             `json:"total_rows"`
+	Bookmark  string          `json:"bookmark"`
+	Rows      []Vulnerability `json:"rows"`
+}
+
 // See https://xforce-api.mybluemix.net/doc/#!/Authentication/auth_anonymousToken_get
 func (c *Client) AnonymousToken() (*AuthResp, error) {
 	var result AuthResp
@@ -514,7 +576,7 @@ func (c *Client) Resolve(q string) (*ResolveResp, error) {
 	return &result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/DNS/resolve_input_get
+// See https://xforce-api.mybluemix.net/doc/#!/Malware/malware_md5_get
 func (c *Client) MalwareDetails(md5 string) (*MalwareResp, error) {
 	var result MalwareResp
 	err := c.do("GET", "malware/"+md5, nil, nil, &result)
@@ -522,4 +584,60 @@ func (c *Client) MalwareDetails(md5 string) (*MalwareResp, error) {
 		return nil, err
 	}
 	return &result, nil
+}
+
+// See https://xforce-api.mybluemix.net/doc/#!/Malware/malware_family_family_get
+func (c *Client) MalwareFamilyDetails(name string) (*MalwareFamilyResp, error) {
+	var result MalwareFamilyResp
+	err := c.do("GET", "malware/family/"+name, nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// See https://xforce-api.mybluemix.net/doc/#!/Vulnerabilities/vulnerabilities__get
+func (c *Client) Vulnerabilities(limit int) ([]Vulnerability, error) {
+	var result []Vulnerability
+	err := c.do("GET", "vulnerabilities", map[string]string{"limit": strconv.Itoa(limit)}, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// See https://xforce-api.mybluemix.net/doc/#!/Vulnerabilities/vulnerabilities_fulltext_get
+// You can use the bookmark to scroll the results if more than 200 rows
+func (c *Client) VulnerabilitiesFullText(q, bookmark string) (*VulnerabilitySearchResp, error) {
+	var result VulnerabilitySearchResp
+	params := make(map[string]string)
+	params["q"] = q
+	if bookmark != "" {
+		params["bookmark"] = bookmark
+	}
+	err := c.do("GET", "vulnerabilities/fulltext", params, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// See https://xforce-api.mybluemix.net/doc/#!/Vulnerabilities/vulnerabilities_xfid_get
+func (c *Client) VulnerabilityByXFID(xfid int) (*Vulnerability, error) {
+	var result Vulnerability
+	err := c.do("GET", "vulnerabilities/"+strconv.Itoa(xfid), nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// See https://xforce-api.mybluemix.net/doc/#!/Vulnerabilities/vulnerabilities_search_stdcode_get
+func (c *Client) VulnerabilityByCVE(cve string) ([]Vulnerability, error) {
+	var result []Vulnerability
+	err := c.do("GET", "vulnerabilities/search/"+cve, nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
