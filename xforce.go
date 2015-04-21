@@ -7,7 +7,6 @@ package goxforce
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -101,7 +100,7 @@ func New(options ...OptionFunc) (*Client, error) {
 
 	// If no API key was specified
 	if c.token == "" {
-		c.tracef("No token provided, using anonymous")
+		c.tracef("No token provided, using anonymous\n")
 		token, err := c.AnonymousToken()
 		if err != nil {
 			return nil, err
@@ -118,7 +117,7 @@ func New(options ...OptionFunc) (*Client, error) {
 func SetToken(token string) OptionFunc {
 	return func(c *Client) error {
 		if token == "" {
-			c.errorf("%v", ErrBadToken)
+			c.errorf("%v\n", ErrBadToken)
 			return ErrBadToken
 		}
 		c.token = token
@@ -151,7 +150,7 @@ func SetUrl(rawurl string) OptionFunc {
 			return err
 		}
 		if u.Scheme != "http" && u.Scheme != "https" {
-			err := fmt.Errorf("Invalid schema specified [%s]", rawurl)
+			err := Error{"bad_url", fmt.Sprintf("Invalid schema specified [%s]", rawurl)}
 			c.errorf("%v", err)
 			return err
 		}
@@ -223,7 +222,7 @@ func (c *Client) handleError(resp *http.Response) error {
 		}
 		msg := fmt.Sprintf("Unexpected status code: %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
 		c.errorf(msg)
-		return errors.New(msg)
+		return Error{"http_error", msg}
 	}
 	return nil
 }
