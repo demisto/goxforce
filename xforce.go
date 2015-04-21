@@ -607,7 +607,7 @@ func (c *Client) Vulnerabilities(limit int) ([]Vulnerability, error) {
 }
 
 // See https://xforce-api.mybluemix.net/doc/#!/Vulnerabilities/vulnerabilities_fulltext_get
-// You can use the bookmark to scroll the results if more than 200 rows
+// TODO - You should be able to use the bookmark to scroll the results if more than 200 rows - currently not officially supported
 func (c *Client) VulnerabilitiesFullText(q, bookmark string) (*VulnerabilitySearchResp, error) {
 	var result VulnerabilitySearchResp
 	params := make(map[string]string)
