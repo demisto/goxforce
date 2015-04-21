@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	DefaultURL = "https://xforce-api.mybluemix.net:443/"
+	DefaultURL  = "https://xforce-api.mybluemix.net:443/"
+	DefaultLang = "en"
 )
 
 type Error struct {
@@ -39,6 +40,7 @@ var (
 type Client struct {
 	token    string       // The token to use for requests. If not provided, we will try and get an anonymous token.
 	url      string       // X-Force URL
+	lang     string       // The language to receive responses in
 	errorlog *log.Logger  // Optional logger to write errors to
 	tracelog *log.Logger  // Optional logger to write trace and debug data to
 	c        *http.Client // The client to use for requests
@@ -99,9 +101,11 @@ func New(options ...OptionFunc) (*Client, error) {
 	// If no API key was specified
 	if c.token == "" {
 		c.tracef("No token provided, using anonymous")
-		if err := c.AnonymousToken(); err != nil {
+		token, err := c.AnonymousToken()
+		if err != nil {
 			return nil, err
 		}
+		c.token = token.Token
 	}
 
 	return c, nil
@@ -154,6 +158,16 @@ func SetUrl(rawurl string) OptionFunc {
 		if !strings.HasSuffix(c.url, "/") {
 			c.url += "/"
 		}
+		return nil
+	}
+}
+
+func SetLang(lang string) OptionFunc {
+	return func(c *Client) error {
+		if lang == "" {
+			lang = DefaultLang
+		}
+		c.lang = lang
 		return nil
 	}
 }
@@ -232,6 +246,9 @@ func (c *Client) do(method, rawurl string, params map[string]string, body io.Rea
 	if c.token != "" {
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
 	}
+	if c.lang != "" {
+		req.Header.Set("Accept-Language", c.lang)
+	}
 	req.Header.Set("Accept", "application/json")
 	var t time.Time
 	if c.tracelog != nil {
@@ -271,11 +288,11 @@ func (c *Client) do(method, rawurl string, params map[string]string, body io.Rea
 
 // Structs for responses
 
-type Token struct {
+type AuthResp struct {
 	Token string `json:"token"`
 }
 
-type AppProfileNames struct {
+type AppResp struct {
 	CanonicalNames []string `json:"canonicalNames"`
 }
 
@@ -286,7 +303,7 @@ type AppBaseDetails struct {
 	Score         float32 `json:"score"`
 }
 
-type Apps struct {
+type AppsFullTextResp struct {
 	Applications []AppBaseDetails `json:"applications"`
 }
 
@@ -335,7 +352,7 @@ type IPHistory struct {
 	History []IPDetails `json:"history"`
 }
 
-type Malware struct {
+type IPMalware struct {
 	First  time.Time `json:"first"`
 	Last   time.Time `json:"last"`
 	MD5    string    `json:"md5"`
@@ -344,8 +361,8 @@ type Malware struct {
 	URI    string    `json:"uri"`
 }
 
-type IPMalware struct {
-	Malware []Malware `json:"malware"`
+type IPMalwareResp struct {
+	Malware []IPMalware `json:"malware"`
 }
 
 type MX struct {
@@ -353,26 +370,83 @@ type MX struct {
 	Priority int    `json:"priority"`
 }
 
-type Resolution struct {
+type ResolveResp struct {
 	A    []string
 	AAAA []string
 	TXT  []string
 	MX   []MX
 }
 
+type EmailIP struct {
+	IP          string    `json:"ip"`
+	FirstSeen   time.Time `json:"firstseen"`
+	LastSeen    time.Time `json:"lastseen"`
+	Occurrences int       `json:"occurrences"`
+}
+
+type EmailDetails struct {
+	FirstSeen  time.Time `json:"firstseen"`
+	FromDomain string    `json:"from_domain"`
+	FilePath   string    `json:"filepath"`
+	IPs        []EmailIP `json:"ips"`
+	URL        string    `json:"url"`
+}
+
+type EmailSubject struct {
+	Title       string    `json:"title"`
+	FirstSeen   time.Time `json:"firstseen"`
+	LastSeen    time.Time `json:"lastseen"`
+	Occurrences int       `json:"occurrences"`
+}
+
+type EmailDownloadServer struct {
+	FirstSeen time.Time `json:"firstseen"`
+	Schema    string    `json:"schema"`
+	Host      string    `json:"host"`
+	Domain    string    `json:"domain"`
+	Filepath  string    `json:"filepath"`
+	IPs       []EmailIP `json:"ips"`
+	URL       string    `json:"url"`
+}
+
+type Origins struct {
+	Emails          []EmailDetails        `json:"emails"`
+	Subjects        []EmailSubject        `json:"subjects"`
+	DownloadServers []EmailDownloadServer `json:"downloadServers"`
+	Sources         []string              `json:"sources"`
+}
+
+type FamilyMembers struct {
+	Count int `json:"count"`
+}
+
+type Malware struct {
+	Type          string        `json:"type"`
+	Created       time.Time     `json:"created"`
+	MD5           string        `json:"md5"`
+	Family        string        `json:"family"`
+	MimeType      string        `json:"mimetype"`
+	Origins       Origins       `json:"origins"`
+	FamilyMembers FamilyMembers `json:"familyMembers"`
+}
+
+type MalwareResp struct {
+	Malware Malware `json:"malware"`
+}
+
 // See https://xforce-api.mybluemix.net/doc/#!/Authentication/auth_anonymousToken_get
-func (c *Client) AnonymousToken() error {
-	var result Token
+func (c *Client) AnonymousToken() (*AuthResp, error) {
+	var result AuthResp
 	err := c.do("GET", "auth/anonymousToken", nil, nil, &result)
-	if err == nil {
-		c.token = result.Token
+	if err != nil {
+		return nil, err
 	}
-	return err
+	return &result, nil
 }
 
 // See https://xforce-api.mybluemix.net/doc/#!/Internet_Application_Profile/app__get
-func (c *Client) InternetAppProfiles() (*AppProfileNames, error) {
-	var result AppProfileNames
+func (c *Client) InternetAppProfiles() (*AppResp, error) {
+	var result AppResp
 	err := c.do("GET", "app/", nil, nil, &result)
 	if err != nil {
 		return nil, err
@@ -381,8 +455,8 @@ func (c *Client) InternetAppProfiles() (*AppProfileNames, error) {
 }
 
 // See https://xforce-api.mybluemix.net/doc/#!/Internet_Application_Profile/apps_fulltext_get
-func (c *Client) InternetApps(q string) (*Apps, error) {
-	var result Apps
+func (c *Client) InternetAppsSearch(q string) (*AppsFullTextResp, error) {
+	var result AppsFullTextResp
 	err := c.do("GET", "apps/fulltext", map[string]string{"q": q}, nil, &result)
 	if err != nil {
 		return nil, err
@@ -421,8 +495,8 @@ func (c *Client) IPRHistory(ip string) (*IPHistory, error) {
 }
 
 // See https://xforce-api.mybluemix.net/doc/#!/IP_Reputation/ipr_malware_ip_get
-func (c *Client) IPRMalware(ip string) (*IPMalware, error) {
-	var result IPMalware
+func (c *Client) IPRMalware(ip string) (*IPMalwareResp, error) {
+	var result IPMalwareResp
 	err := c.do("GET", "ipr/malware/"+ip, nil, nil, &result)
 	if err != nil {
 		return nil, err
@@ -431,9 +505,19 @@ func (c *Client) IPRMalware(ip string) (*IPMalware, error) {
 }
 
 // See https://xforce-api.mybluemix.net/doc/#!/DNS/resolve_input_get
-func (c *Client) Resolve(q string) (*Resolution, error) {
-	var result Resolution
+func (c *Client) Resolve(q string) (*ResolveResp, error) {
+	var result ResolveResp
 	err := c.do("GET", "resolve/"+q, nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// See https://xforce-api.mybluemix.net/doc/#!/DNS/resolve_input_get
+func (c *Client) MalwareDetails(md5 string) (*MalwareResp, error) {
+	var result MalwareResp
+	err := c.do("GET", "malware/"+md5, nil, nil, &result)
 	if err != nil {
 		return nil, err
 	}

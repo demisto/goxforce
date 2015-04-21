@@ -1,4 +1,4 @@
-// xfx.go - command line interface to IBM X-force Exchange
+// xfe.go - command line interface to IBM X-force Exchange
 package main
 
 import (
@@ -13,14 +13,16 @@ import (
 
 var token string
 var url string
+var lang string
 var cmd string
 var q string
 var v bool
 
 func init() {
-	flag.StringVar(&token, "token", os.Getenv("XFX_TOKEN"), "The token to use for X-Force access. Can be provided as an environment variable XFX_TOKEN. If not specified, anonymous access will be used.")
+	flag.StringVar(&token, "token", os.Getenv("XFE_TOKEN"), "The token to use for X-Force access. Can be provided as an environment variable XFE_TOKEN. If not specified, anonymous access will be used.")
 	flag.StringVar(&url, "url", goxforce.DefaultURL, "URL of the X-Force API to be used.")
-	flag.StringVar(&cmd, "cmd", "", "The command to execute: listApps/searchApp/appDetails/ipr/iprhist/iprmalware/resolve")
+	flag.StringVar(&lang, "lang", goxforce.DefaultLang, "The language to accept responses in")
+	flag.StringVar(&cmd, "cmd", "", "The command to execute: listApps/searchApp/appDetails/ipr/iprhist/iprmalware/resolve/malware")
 	flag.StringVar(&q, "q", "", "The search or parameter for the command")
 	flag.BoolVar(&v, "v", false, "Verbosity. If specified will trace the requests.")
 }
@@ -39,7 +41,7 @@ func main() {
 		os.Exit(1)
 	}
 	c, err := goxforce.New(goxforce.SetErrorLog(log.New(os.Stderr, "", log.Lshortfile)),
-		goxforce.SetUrl(url))
+		goxforce.SetUrl(url), goxforce.SetLang(lang))
 	check(err)
 	if v {
 		goxforce.SetTraceLog(log.New(os.Stderr, "", log.Lshortfile))(c)
@@ -53,7 +55,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "You must specify the app text you are searching\n")
 			os.Exit(1)
 		}
-		res, err = c.InternetApps(q)
+		res, err = c.InternetAppsSearch(q)
 	case "appdetails":
 		if q == "" {
 			fmt.Fprintf(os.Stderr, "You must specify the app name\n")
@@ -84,6 +86,12 @@ func main() {
 			os.Exit(1)
 		}
 		res, err = c.Resolve(q)
+	case "malware":
+		if q == "" {
+			fmt.Fprintf(os.Stderr, "You must specify the MD5 of the malware\n")
+			os.Exit(1)
+		}
+		res, err = c.MalwareDetails(q)
 	default:
 		fmt.Fprintf(os.Stderr, "Command [%s] is not recognized\n", cmd)
 		os.Exit(1)
