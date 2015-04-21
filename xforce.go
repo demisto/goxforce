@@ -229,6 +229,10 @@ func (c *Client) do(method, rawurl string, params map[string]string, body io.Rea
 	if err != nil {
 		return err
 	}
+	if c.token != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
+	}
+	req.Header.Set("Accept", "application/json")
 	var t time.Time
 	if c.tracelog != nil {
 		c.dumpRequest(req)
@@ -271,6 +275,79 @@ type Token struct {
 	Token string `json:"token"`
 }
 
+type AppProfileNames struct {
+	CanonicalNames []string `json:"canonicalNames"`
+}
+
+type AppBaseDetails struct {
+	CanonicalName string  `json:"canonicalName"`
+	Name          string  `json:"name"`
+	Description   string  `json:"description"`
+	Score         float32 `json:"score"`
+}
+
+type Apps struct {
+	Applications []AppBaseDetails `json:"applications"`
+}
+
+type ValueDesc struct {
+	Value       int    `json:"value"`
+	Description string `json:"description"`
+}
+
+type AppDetails struct {
+	CanonicalName string               `json:"canonicalName"`
+	Name          string               `json:"name"`
+	Description   string               `json:"description"`
+	Categories    map[string]bool      `json:"categories"`
+	Actions       map[string]bool      `json:"actions"`
+	Rlfs          map[string]ValueDesc `json:"rlfs"`
+	Score         float32              `json:"score"`
+	BaseURL       string               `json:"baseurl"`
+	URLs          []string             `json:"urls"`
+}
+
+type AppProfile struct {
+	Application AppDetails `json:"application"`
+}
+
+type IPDetails struct {
+	Geo     map[string]interface{} `json:"geo"`
+	IP      string                 `json:"ip"`
+	Reason  string                 `json:"reason"`
+	Created time.Time              `json:"created"`
+	Score   int                    `json:"score"`
+	Cats    map[string]int         `json:"cats"`
+	Subnet  string                 `json:"subnet"`
+}
+
+type IPReputation struct {
+	IP      string                 `json:"ip"`
+	Subnets []IPDetails            `json:"subnets"`
+	Cats    map[string]int         `json:"cats"`
+	Geo     map[string]interface{} `json:"geo"`
+	Score   int                    `json:"score"`
+}
+
+type IPHistory struct {
+	IP      string      `json:"ip"`
+	Subnets []IPDetails `json:"subnets"`
+	History []IPDetails `json:"history"`
+}
+
+type Malware struct {
+	First  time.Time `json:"first"`
+	Last   time.Time `json:"last"`
+	MD5    string    `json:"md5"`
+	Family string    `json:"family"`
+	Origin string    `json:"origin"`
+	URI    string    `json:"uri"`
+}
+
+type IPMalware struct {
+	Malware []Malware `json:"malware"`
+}
+
 // See https://xforce-api.mybluemix.net/doc/#!/Authentication/auth_anonymousToken_get
 func (c *Client) AnonymousToken() error {
 	var result Token
@@ -279,4 +356,64 @@ func (c *Client) AnonymousToken() error {
 		c.token = result.Token
 	}
 	return err
+}
+
+// See https://xforce-api.mybluemix.net/doc/#!/Internet_Application_Profile/app__get
+func (c *Client) InternetAppProfiles() (*AppProfileNames, error) {
+	var result AppProfileNames
+	err := c.do("GET", "app/", nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// See https://xforce-api.mybluemix.net/doc/#!/Internet_Application_Profile/apps_fulltext_get
+func (c *Client) InternetApps(q string) (*Apps, error) {
+	var result Apps
+	err := c.do("GET", "apps/fulltext", map[string]string{"q": q}, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// See https://xforce-api.mybluemix.net/doc/#!/Internet_Application_Profile/apps_fulltext_get
+func (c *Client) InternetAppByName(name string) (*AppProfile, error) {
+	var result AppProfile
+	err := c.do("GET", "app/"+name, nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// See https://xforce-api.mybluemix.net/doc/#!/IP_Reputation/ipr_ip_get
+func (c *Client) IPR(ip string) (*IPReputation, error) {
+	var result IPReputation
+	err := c.do("GET", "ipr/"+ip, nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// See https://xforce-api.mybluemix.net/doc/#!/IP_Reputation/ipr_history_ip_get
+func (c *Client) IPRHistory(ip string) (*IPHistory, error) {
+	var result IPHistory
+	err := c.do("GET", "ipr/history/"+ip, nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// See https://xforce-api.mybluemix.net/doc/#!/IP_Reputation/ipr_malware_ip_get
+func (c *Client) IPRMalware(ip string) (*IPMalware, error) {
+	var result IPMalware
+	err := c.do("GET", "ipr/malware/"+ip, nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
