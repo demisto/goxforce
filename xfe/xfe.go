@@ -20,7 +20,7 @@ var v bool
 func init() {
 	flag.StringVar(&token, "token", os.Getenv("XFX_TOKEN"), "The token to use for X-Force access. Can be provided as an environment variable XFX_TOKEN. If not specified, anonymous access will be used.")
 	flag.StringVar(&url, "url", goxforce.DefaultURL, "URL of the X-Force API to be used.")
-	flag.StringVar(&cmd, "cmd", "", "The command to execute: listApps/searchApp/appDetails/ipr/iprhist/iprmalware")
+	flag.StringVar(&cmd, "cmd", "", "The command to execute: listApps/searchApp/appDetails/ipr/iprhist/iprmalware/resolve")
 	flag.StringVar(&q, "q", "", "The search or parameter for the command")
 	flag.BoolVar(&v, "v", false, "Verbosity. If specified will trace the requests.")
 }
@@ -78,6 +78,12 @@ func main() {
 			os.Exit(1)
 		}
 		res, err = c.IPRMalware(q)
+	case "resolve":
+		if q == "" {
+			fmt.Fprintf(os.Stderr, "You must specify what to resolve (domain/IP/URL)\n")
+			os.Exit(1)
+		}
+		res, err = c.Resolve(q)
 	default:
 		fmt.Fprintf(os.Stderr, "Command [%s] is not recognized\n", cmd)
 		os.Exit(1)

@@ -348,6 +348,18 @@ type IPMalware struct {
 	Malware []Malware `json:"malware"`
 }
 
+type MX struct {
+	Exchange string `json:"exchange"`
+	Priority int    `json:"priority"`
+}
+
+type Resolution struct {
+	A    []string
+	AAAA []string
+	TXT  []string
+	MX   []MX
+}
+
 // See https://xforce-api.mybluemix.net/doc/#!/Authentication/auth_anonymousToken_get
 func (c *Client) AnonymousToken() error {
 	var result Token
@@ -412,6 +424,16 @@ func (c *Client) IPRHistory(ip string) (*IPHistory, error) {
 func (c *Client) IPRMalware(ip string) (*IPMalware, error) {
 	var result IPMalware
 	err := c.do("GET", "ipr/malware/"+ip, nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// See https://xforce-api.mybluemix.net/doc/#!/DNS/resolve_input_get
+func (c *Client) Resolve(q string) (*Resolution, error) {
+	var result Resolution
+	err := c.do("GET", "resolve/"+q, nil, nil, &result)
 	if err != nil {
 		return nil, err
 	}
