@@ -83,8 +83,9 @@ func (c *Client) tracef(format string, args ...interface{}) {
 func New(options ...OptionFunc) (*Client, error) {
 	// Set up the client
 	c := &Client{
-		url: "",
-		c:   http.DefaultClient,
+		url:  "",
+		c:    http.DefaultClient,
+		lang: DefaultLang,
 	}
 
 	// Run the options on it
