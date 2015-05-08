@@ -24,7 +24,7 @@ func init() {
 	flag.StringVar(&token, "token", os.Getenv("XFE_TOKEN"), "The token to use for X-Force access. Can be provided as an environment variable XFE_TOKEN. If not specified, anonymous access will be used.")
 	flag.StringVar(&url, "url", goxforce.DefaultURL, "URL of the X-Force API to be used.")
 	flag.StringVar(&lang, "lang", goxforce.DefaultLang, "The language to accept responses in")
-	flag.StringVar(&cmd, "cmd", "", "The command to execute: listApps/searchApp/appDetails/ipr/iprhist/iprmalware/resolve/malware/malwarefamily/vulns/searchVulns/xfid/cve")
+	flag.StringVar(&cmd, "cmd", "", "The command to execute: listApps/searchApp/appDetails/ipr/iprhist/iprmalware/resolve/url/urlmalware/malware/malwarefamily/vulns/searchVulns/xfid/cve")
 	flag.StringVar(&q, "q", "", "The search or parameter for the command")
 	flag.StringVar(&q2, "q2", "", "Additional parameter for commands that might require 2 parameters")
 	flag.BoolVar(&v, "v", false, "Verbosity. If specified will trace the requests.")
@@ -89,6 +89,18 @@ func main() {
 			os.Exit(1)
 		}
 		res, err = c.Resolve(q)
+	case "url":
+		if q == "" {
+			fmt.Fprintf(os.Stderr, "You must specify the URL\n")
+			os.Exit(1)
+		}
+		res, err = c.Url(q)
+	case "urlmalware":
+		if q == "" {
+			fmt.Fprintf(os.Stderr, "You must specify the URL\n")
+			os.Exit(1)
+		}
+		res, err = c.UrlMalware(q)
 	case "malware":
 		if q == "" {
 			fmt.Fprintf(os.Stderr, "You must specify the MD5 of the malware\n")

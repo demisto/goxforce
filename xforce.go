@@ -378,6 +378,20 @@ type ResolveResp struct {
 	MX   []MX
 }
 
+type Url struct {
+	Url   string          `json:"url"`
+	Cats  map[string]bool `json:"cats"`
+	Score int             `json:"score"`
+}
+
+type UrlResp struct {
+	Result Url `json:"result"`
+}
+
+type UrlMalwareResp struct {
+	Malware []IPMalware `json:"malware"`
+}
+
 type EmailIP struct {
 	IP          string    `json:"ip"`
 	FirstSeen   time.Time `json:"firstseen"`
@@ -570,6 +584,26 @@ func (c *Client) IPRMalware(ip string) (*IPMalwareResp, error) {
 func (c *Client) Resolve(q string) (*ResolveResp, error) {
 	var result ResolveResp
 	err := c.do("GET", "resolve/"+q, nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// See https://xforce-api.mybluemix.net/doc/#!/URL/url_url_get
+func (c *Client) Url(q string) (*UrlResp, error) {
+	var result UrlResp
+	err := c.do("GET", "url/"+q, nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// See https://xforce-api.mybluemix.net/doc/#!/URL/url_malware_url_get
+func (c *Client) UrlMalware(q string) (*UrlMalwareResp, error) {
+	var result UrlMalwareResp
+	err := c.do("GET", "url/malware/"+q, nil, nil, &result)
 	if err != nil {
 		return nil, err
 	}
