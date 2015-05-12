@@ -334,7 +334,7 @@ type IPDetails struct {
 	IP      string                 `json:"ip"`
 	Reason  string                 `json:"reason"`
 	Created time.Time              `json:"created"`
-	Score   int                    `json:"score"`
+	Score   float32                `json:"score"`
 	Cats    map[string]int         `json:"cats"`
 	Subnet  string                 `json:"subnet"`
 }
@@ -344,7 +344,7 @@ type IPReputation struct {
 	Subnets []IPDetails            `json:"subnets"`
 	Cats    map[string]int         `json:"cats"`
 	Geo     map[string]interface{} `json:"geo"`
-	Score   int                    `json:"score"`
+	Score   float32                `json:"score"`
 }
 
 type IPHistory struct {
@@ -381,7 +381,7 @@ type ResolveResp struct {
 type Url struct {
 	Url   string          `json:"url"`
 	Cats  map[string]bool `json:"cats"`
-	Score int             `json:"score"`
+	Score float32         `json:"score"`
 }
 
 type UrlResp struct {
