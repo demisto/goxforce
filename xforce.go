@@ -357,7 +357,7 @@ type IPMalware struct {
 	First  time.Time `json:"first"`
 	Last   time.Time `json:"last"`
 	MD5    string    `json:"md5"`
-	Family string    `json:"family"`
+	Family []string  `json:"family"`
 	Origin string    `json:"origin"`
 	URI    string    `json:"uri"`
 }
@@ -389,76 +389,74 @@ type UrlResp struct {
 }
 
 type UrlMalwareResp struct {
-	Malware []IPMalware `json:"malware"`
+	Malware []Details `json:"malware"`
+	Count   int       `json:count"`
 }
 
-type EmailIP struct {
-	IP          string    `json:"ip"`
-	FirstSeen   time.Time `json:"firstseen"`
-	LastSeen    time.Time `json:"lastseen"`
-	Occurrences int       `json:"occurrences"`
-}
-
-type EmailDetails struct {
-	FirstSeen  time.Time `json:"firstseen"`
-	FromDomain string    `json:"from_domain"`
-	FilePath   string    `json:"filepath"`
-	IPs        []EmailIP `json:"ips"`
-	URL        string    `json:"url"`
-}
-
-type EmailSubject struct {
-	Title       string    `json:"title"`
-	FirstSeen   time.Time `json:"firstseen"`
-	LastSeen    time.Time `json:"lastseen"`
-	Occurrences int       `json:"occurrences"`
-}
-
-type EmailDownloadServer struct {
-	FirstSeen time.Time `json:"firstseen"`
-	Schema    string    `json:"schema"`
-	Host      string    `json:"host"`
+type Details struct {
+	Type      string    `json:"type"`
+	MD5       string    `json:"md5"`
 	Domain    string    `json:"domain"`
+	FirstSeen time.Time `json:"firstseen"`
+	LastSeen  time.Time `json:"lastseen"`
+	IP        string    `json:"ip"`
+	Count     int       `json:"count"`
 	Filepath  string    `json:"filepath"`
-	IPs       []EmailIP `json:"ips"`
-	URL       string    `json:"url"`
+	Origin    string    `json:"origin"`
+	URI       string    `json:"uri"`
+	// Download servers specific
+	Host   string `json:"host"`
+	Schema string `json:"schema"`
+	// Subject specific
+	Subject string   `json"subject"`
+	IPs     []string `json:"ips"`
+	// CnC specific
+	Family []string `json:"family"`
 }
 
-type Origins struct {
-	Emails          []EmailDetails        `json:"emails"`
-	Subjects        []EmailSubject        `json:"subjects"`
-	DownloadServers []EmailDownloadServer `json:"downloadServers"`
-	Sources         []string              `json:"sources"`
+type DetailsCount struct {
+	Rows  []Details `json:"rows"`
+	Count int       `json:"count"`
 }
 
-type FamilyMembers struct {
+type Count struct {
 	Count int `json:"count"`
 }
 
+type Origins struct {
+	Emails          DetailsCount `json:"emails"`
+	Subjects        DetailsCount `json:"subjects"`
+	DownloadServers DetailsCount `json:"downloadServers"`
+	CnCServers      DetailsCount `json:"CnCServers"`
+	External        struct {
+		DetectionCoverage int      `json:"detectionCoverage"`
+		Family            []string `json:"family"`
+	} `json:"external"`
+}
+
+type MalwareBase struct {
+	Type     string    `json:"type"`
+	Created  time.Time `json:"created"`
+	MD5      string    `json:"md5"`
+	Family   []string  `json:"family"`
+	MimeType string    `json:"mimetype"`
+}
+
 type Malware struct {
-	Type          string        `json:"type"`
-	Created       time.Time     `json:"created"`
-	MD5           string        `json:"md5"`
-	Family        string        `json:"family"`
-	MimeType      string        `json:"mimetype"`
-	Origins       Origins       `json:"origins"`
-	FamilyMembers FamilyMembers `json:"familyMembers"`
+	MalwareBase
+	Origins       Origins          `json:"origins"`
+	FamilyMembers map[string]Count `json:"familyMembers"`
 }
 
 type MalwareResp struct {
 	Malware Malware `json:"malware"`
 }
 
-type FamilyMalware struct {
-	MD5      string    `json:"md5"`
-	MimeType string    `json:"mimetype"`
-	Created  time.Time `json:"created"`
-}
-
 type MalwareFamilyResp struct {
-	FirstSeen time.Time       `json:"firstseen"`
-	LastSeen  time.Time       `json:"lastseen"`
-	Malware   []FamilyMalware `json:"malware"`
+	FirstSeen time.Time     `json:"firstseen"`
+	LastSeen  time.Time     `json:"lastseen"`
+	Family    []string      `json:"family"`
+	Malware   []MalwareBase `json:"malware"`
 }
 
 type Reference struct {
@@ -477,6 +475,7 @@ type Vulnerability struct {
 	Xfdbid                int         `json:"xfdbid"`
 	Updateid              int         `json:"updateid"`
 	Updated               bool        `json:"updated"`
+	Inserted              bool        `json:"inserted"`
 	Variant               string      `json:"variant"`
 	Title                 string      `json:"title"`
 	Description           string      `json:"description"`
