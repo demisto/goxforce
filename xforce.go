@@ -1,5 +1,5 @@
 /*
-goxforce is a library implementing the IBM X-Force Exchange API.
+Package goxforce is a library implementing the IBM X-Force Exchange API.
 
 Written by Slavik Markovich at Demisto
 */
@@ -19,20 +19,24 @@ import (
 )
 
 const (
-	DefaultURL  = "https://xforce-api.mybluemix.net:443/"
+	// DefaultURL is the URL for the API endpoint
+	DefaultURL = "https://xforce-api.mybluemix.net:443/"
+	// DefaultLang is the default language for the returned data
 	DefaultLang = "en"
 )
 
+// Error structs are returned from this library for known error conditions
 type Error struct {
-	Id     string `json:"id"`
+	ID     string `json:"id"`
 	Detail string `json:"detail"`
 }
 
 func (e Error) Error() string {
-	return fmt.Sprintf("%s: %s", e.Id, e.Detail)
+	return fmt.Sprintf("%s: %s", e.ID, e.Detail)
 }
 
 var (
+	// ErrBadToken is returned when there is no token available for the API
 	ErrBadToken = &Error{"bad_token", "Bad token was provided to the API"}
 )
 
@@ -126,9 +130,9 @@ func SetToken(token string) OptionFunc {
 	}
 }
 
-// SetHttpClient can be used to specify the http.Client to use when making
+// SetHTTPClient can be used to specify the http.Client to use when making
 // HTTP requests to X-Force.
-func SetHttpClient(httpClient *http.Client) OptionFunc {
+func SetHTTPClient(httpClient *http.Client) OptionFunc {
 	return func(c *Client) error {
 		if httpClient != nil {
 			c.c = httpClient
@@ -139,8 +143,8 @@ func SetHttpClient(httpClient *http.Client) OptionFunc {
 	}
 }
 
-// SetUrl defines the URL endpoint X-Force
-func SetUrl(rawurl string) OptionFunc {
+// SetURL defines the URL endpoint X-Force
+func SetURL(rawurl string) OptionFunc {
 	return func(c *Client) error {
 		if rawurl == "" {
 			rawurl = DefaultURL
@@ -163,6 +167,7 @@ func SetUrl(rawurl string) OptionFunc {
 	}
 }
 
+// SetLang sets the language we expect the return values to be
 func SetLang(lang string) OptionFunc {
 	return func(c *Client) error {
 		if lang == "" {
@@ -289,14 +294,17 @@ func (c *Client) do(method, rawurl string, params map[string]string, body io.Rea
 
 // Structs for responses
 
+// AuthResp holds the response to the auth request
 type AuthResp struct {
 	Token string `json:"token"`
 }
 
+// AppResp holds the response for the InternetAppProfiles request
 type AppResp struct {
 	CanonicalNames []string `json:"canonicalNames"`
 }
 
+// AppBaseDetails holds details about a known application
 type AppBaseDetails struct {
 	CanonicalName string  `json:"canonicalName"`
 	Name          string  `json:"name"`
@@ -304,15 +312,18 @@ type AppBaseDetails struct {
 	Score         float32 `json:"score"`
 }
 
+// AppsFullTextResp is the response for InternetAppsSearch request
 type AppsFullTextResp struct {
 	Applications []AppBaseDetails `json:"applications"`
 }
 
+// ValueDesc is a helper struct to hold a value and a description
 type ValueDesc struct {
 	Value       int    `json:"value"`
 	Description string `json:"description"`
 }
 
+// AppDetails holds the full application details
 type AppDetails struct {
 	CanonicalName string               `json:"canonicalName"`
 	Name          string               `json:"name"`
@@ -325,10 +336,12 @@ type AppDetails struct {
 	URLs          []string             `json:"urls"`
 }
 
+// AppProfile is the response to the InternetAppByName request
 type AppProfile struct {
 	Application AppDetails `json:"application"`
 }
 
+// IPDetails holds information about an IP (and subnets)
 type IPDetails struct {
 	Geo     map[string]interface{} `json:"geo"`
 	IP      string                 `json:"ip"`
@@ -339,6 +352,7 @@ type IPDetails struct {
 	Subnet  string                 `json:"subnet"`
 }
 
+// IPReputation is the response to the IPR request
 type IPReputation struct {
 	IP      string                 `json:"ip"`
 	Subnets []IPDetails            `json:"subnets"`
@@ -347,12 +361,14 @@ type IPReputation struct {
 	Score   float32                `json:"score"`
 }
 
+// IPHistory holds the history for an IP
 type IPHistory struct {
 	IP      string      `json:"ip"`
 	Subnets []IPDetails `json:"subnets"`
 	History []IPDetails `json:"history"`
 }
 
+// IPMalware holds the details for the malware hosted on an IP
 type IPMalware struct {
 	First  time.Time `json:"first"`
 	Last   time.Time `json:"last"`
@@ -362,15 +378,18 @@ type IPMalware struct {
 	URI    string    `json:"uri"`
 }
 
+// IPMalwareResp is the response to the IPRMalware request
 type IPMalwareResp struct {
 	Malware []IPMalware `json:"malware"`
 }
 
+// MX holds MX information
 type MX struct {
 	Exchange string `json:"exchange"`
 	Priority int    `json:"priority"`
 }
 
+// ResolveResp is the response to the Resolve request
 type ResolveResp struct {
 	A    []string
 	AAAA []string
@@ -378,21 +397,25 @@ type ResolveResp struct {
 	MX   []MX
 }
 
-type Url struct {
-	Url   string          `json:"url"`
+// URL holds URL details
+type URL struct {
+	URL   string          `json:"url"`
 	Cats  map[string]bool `json:"cats"`
 	Score float32         `json:"score"`
 }
 
-type UrlResp struct {
-	Result Url `json:"result"`
+// URLResp holds the response to the URL request
+type URLResp struct {
+	Result URL `json:"result"`
 }
 
-type UrlMalwareResp struct {
+// URLMalwareResp holds the response to the UrlMalware request
+type URLMalwareResp struct {
 	Malware []Details `json:"malware"`
-	Count   int       `json:count"`
+	Count   int       `json:"count"`
 }
 
+// Details holds malware details
 type Details struct {
 	Type      string    `json:"type"`
 	MD5       string    `json:"md5"`
@@ -408,21 +431,24 @@ type Details struct {
 	Host   string `json:"host"`
 	Schema string `json:"schema"`
 	// Subject specific
-	Subject string   `json"subject"`
+	Subject string   `json:"subject"`
 	IPs     []string `json:"ips"`
 	// CnC specific
 	Family []string `json:"family"`
 }
 
+// DetailsCount holds rows of details and a count
 type DetailsCount struct {
 	Rows  []Details `json:"rows"`
 	Count int       `json:"count"`
 }
 
+// Count is a helper struct holding a count
 type Count struct {
 	Count int `json:"count"`
 }
 
+// Origins holds the origins of malware
 type Origins struct {
 	Emails          DetailsCount `json:"emails"`
 	Subjects        DetailsCount `json:"subjects"`
@@ -434,6 +460,7 @@ type Origins struct {
 	} `json:"external"`
 }
 
+// MalwareBase is the basic info of a malware
 type MalwareBase struct {
 	Type     string    `json:"type"`
 	Created  time.Time `json:"created"`
@@ -442,16 +469,19 @@ type MalwareBase struct {
 	MimeType string    `json:"mimetype"`
 }
 
+// Malware holds all the additional information about a malware including origins
 type Malware struct {
 	MalwareBase
 	Origins       Origins          `json:"origins"`
 	FamilyMembers map[string]Count `json:"familyMembers"`
 }
 
+// MalwareResp is the response to the malware request
 type MalwareResp struct {
 	Malware Malware `json:"malware"`
 }
 
+// MalwareFamilyResp is the response to the malware family request
 type MalwareFamilyResp struct {
 	FirstSeen time.Time     `json:"firstseen"`
 	LastSeen  time.Time     `json:"lastseen"`
@@ -459,17 +489,20 @@ type MalwareFamilyResp struct {
 	Malware   []MalwareBase `json:"malware"`
 }
 
+// Reference holds an external reference
 type Reference struct {
 	LinkTarget  string `json:"link_target"`
 	LinkName    string `json:"link_name"`
 	Description string `json:"description"`
 }
 
+// Signature holds a vulnerability signature
 type Signature struct {
 	Coverage     string    `json:"coverage"`
 	CoverageDate time.Time `json:"coverage_date"`
 }
 
+// Vulnerability holds the full vulnerability description
 type Vulnerability struct {
 	Type                  string      `json:"type"`
 	Xfdbid                int         `json:"xfdbid"`
@@ -503,13 +536,14 @@ type Vulnerability struct {
 	ReportConfidence      string      `json:"report_confidence"`
 }
 
+// VulnerabilitySearchResp is the response to a vulnerability search
 type VulnerabilitySearchResp struct {
 	TotalRows int             `json:"total_rows"`
 	Bookmark  string          `json:"bookmark"`
 	Rows      []Vulnerability `json:"rows"`
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/Authentication/auth_anonymousToken_get
+// AnonymousToken request - See https://xforce-api.mybluemix.net/doc/#!/Authentication/auth_anonymousToken_get
 func (c *Client) AnonymousToken() (*AuthResp, error) {
 	var result AuthResp
 	err := c.do("GET", "auth/anonymousToken", nil, nil, &result)
@@ -519,7 +553,7 @@ func (c *Client) AnonymousToken() (*AuthResp, error) {
 	return &result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/Internet_Application_Profile/app__get
+// InternetAppProfiles request - See https://xforce-api.mybluemix.net/doc/#!/Internet_Application_Profile/app__get
 func (c *Client) InternetAppProfiles() (*AppResp, error) {
 	var result AppResp
 	err := c.do("GET", "app/", nil, nil, &result)
@@ -529,7 +563,7 @@ func (c *Client) InternetAppProfiles() (*AppResp, error) {
 	return &result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/Internet_Application_Profile/apps_fulltext_get
+// InternetAppsSearch request - See https://xforce-api.mybluemix.net/doc/#!/Internet_Application_Profile/apps_fulltext_get
 func (c *Client) InternetAppsSearch(q string) (*AppsFullTextResp, error) {
 	var result AppsFullTextResp
 	err := c.do("GET", "apps/fulltext", map[string]string{"q": q}, nil, &result)
@@ -539,7 +573,7 @@ func (c *Client) InternetAppsSearch(q string) (*AppsFullTextResp, error) {
 	return &result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/Internet_Application_Profile/apps_fulltext_get
+// InternetAppByName request - See https://xforce-api.mybluemix.net/doc/#!/Internet_Application_Profile/apps_fulltext_get
 func (c *Client) InternetAppByName(name string) (*AppProfile, error) {
 	var result AppProfile
 	err := c.do("GET", "app/"+name, nil, nil, &result)
@@ -549,7 +583,7 @@ func (c *Client) InternetAppByName(name string) (*AppProfile, error) {
 	return &result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/IP_Reputation/ipr_ip_get
+// IPR IP Reputation request - See https://xforce-api.mybluemix.net/doc/#!/IP_Reputation/ipr_ip_get
 func (c *Client) IPR(ip string) (*IPReputation, error) {
 	var result IPReputation
 	err := c.do("GET", "ipr/"+ip, nil, nil, &result)
@@ -559,7 +593,7 @@ func (c *Client) IPR(ip string) (*IPReputation, error) {
 	return &result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/IP_Reputation/ipr_history_ip_get
+// IPRHistory request - See https://xforce-api.mybluemix.net/doc/#!/IP_Reputation/ipr_history_ip_get
 func (c *Client) IPRHistory(ip string) (*IPHistory, error) {
 	var result IPHistory
 	err := c.do("GET", "ipr/history/"+ip, nil, nil, &result)
@@ -569,7 +603,7 @@ func (c *Client) IPRHistory(ip string) (*IPHistory, error) {
 	return &result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/IP_Reputation/ipr_malware_ip_get
+// IPRMalware request - See https://xforce-api.mybluemix.net/doc/#!/IP_Reputation/ipr_malware_ip_get
 func (c *Client) IPRMalware(ip string) (*IPMalwareResp, error) {
 	var result IPMalwareResp
 	err := c.do("GET", "ipr/malware/"+ip, nil, nil, &result)
@@ -579,7 +613,7 @@ func (c *Client) IPRMalware(ip string) (*IPMalwareResp, error) {
 	return &result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/DNS/resolve_input_get
+// Resolve request - See https://xforce-api.mybluemix.net/doc/#!/DNS/resolve_input_get
 func (c *Client) Resolve(q string) (*ResolveResp, error) {
 	var result ResolveResp
 	err := c.do("GET", "resolve/"+q, nil, nil, &result)
@@ -589,9 +623,9 @@ func (c *Client) Resolve(q string) (*ResolveResp, error) {
 	return &result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/URL/url_url_get
-func (c *Client) Url(q string) (*UrlResp, error) {
-	var result UrlResp
+// URL request - See https://xforce-api.mybluemix.net/doc/#!/URL/url_url_get
+func (c *Client) URL(q string) (*URLResp, error) {
+	var result URLResp
 	err := c.do("GET", "url/"+q, nil, nil, &result)
 	if err != nil {
 		return nil, err
@@ -599,9 +633,9 @@ func (c *Client) Url(q string) (*UrlResp, error) {
 	return &result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/URL/url_malware_url_get
-func (c *Client) UrlMalware(q string) (*UrlMalwareResp, error) {
-	var result UrlMalwareResp
+// URLMalware request - See https://xforce-api.mybluemix.net/doc/#!/URL/url_malware_url_get
+func (c *Client) URLMalware(q string) (*URLMalwareResp, error) {
+	var result URLMalwareResp
 	err := c.do("GET", "url/malware/"+q, nil, nil, &result)
 	if err != nil {
 		return nil, err
@@ -609,7 +643,7 @@ func (c *Client) UrlMalware(q string) (*UrlMalwareResp, error) {
 	return &result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/Malware/malware_md5_get
+// MalwareDetails request - See https://xforce-api.mybluemix.net/doc/#!/Malware/malware_md5_get
 func (c *Client) MalwareDetails(md5 string) (*MalwareResp, error) {
 	var result MalwareResp
 	err := c.do("GET", "malware/"+md5, nil, nil, &result)
@@ -619,7 +653,7 @@ func (c *Client) MalwareDetails(md5 string) (*MalwareResp, error) {
 	return &result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/Malware/malware_family_family_get
+// MalwareFamilyDetails request - See https://xforce-api.mybluemix.net/doc/#!/Malware/malware_family_family_get
 func (c *Client) MalwareFamilyDetails(name string) (*MalwareFamilyResp, error) {
 	var result MalwareFamilyResp
 	err := c.do("GET", "malware/family/"+name, nil, nil, &result)
@@ -629,7 +663,7 @@ func (c *Client) MalwareFamilyDetails(name string) (*MalwareFamilyResp, error) {
 	return &result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/Vulnerabilities/vulnerabilities__get
+// Vulnerabilities request - See https://xforce-api.mybluemix.net/doc/#!/Vulnerabilities/vulnerabilities__get
 func (c *Client) Vulnerabilities(limit int) ([]Vulnerability, error) {
 	var result []Vulnerability
 	err := c.do("GET", "vulnerabilities", map[string]string{"limit": strconv.Itoa(limit)}, nil, &result)
@@ -639,7 +673,7 @@ func (c *Client) Vulnerabilities(limit int) ([]Vulnerability, error) {
 	return result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/Vulnerabilities/vulnerabilities_fulltext_get
+// VulnerabilitiesFullText request - See https://xforce-api.mybluemix.net/doc/#!/Vulnerabilities/vulnerabilities_fulltext_get
 // TODO - You should be able to use the bookmark to scroll the results if more than 200 rows - currently not officially supported
 func (c *Client) VulnerabilitiesFullText(q, bookmark string) (*VulnerabilitySearchResp, error) {
 	var result VulnerabilitySearchResp
@@ -655,7 +689,7 @@ func (c *Client) VulnerabilitiesFullText(q, bookmark string) (*VulnerabilitySear
 	return &result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/Vulnerabilities/vulnerabilities_xfid_get
+// VulnerabilityByXFID request - See https://xforce-api.mybluemix.net/doc/#!/Vulnerabilities/vulnerabilities_xfid_get
 func (c *Client) VulnerabilityByXFID(xfid int) (*Vulnerability, error) {
 	var result Vulnerability
 	err := c.do("GET", "vulnerabilities/"+strconv.Itoa(xfid), nil, nil, &result)
@@ -665,7 +699,7 @@ func (c *Client) VulnerabilityByXFID(xfid int) (*Vulnerability, error) {
 	return &result, nil
 }
 
-// See https://xforce-api.mybluemix.net/doc/#!/Vulnerabilities/vulnerabilities_search_stdcode_get
+// VulnerabilityByCVE request - See https://xforce-api.mybluemix.net/doc/#!/Vulnerabilities/vulnerabilities_search_stdcode_get
 func (c *Client) VulnerabilityByCVE(cve string) ([]Vulnerability, error) {
 	var result []Vulnerability
 	err := c.do("GET", "vulnerabilities/search/"+cve, nil, nil, &result)

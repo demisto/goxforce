@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/demisto/goxforce"
 	"log"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/demisto/goxforce"
 )
 
 var token string
@@ -44,7 +45,7 @@ func main() {
 		os.Exit(1)
 	}
 	c, err := goxforce.New(goxforce.SetErrorLog(log.New(os.Stderr, "", log.Lshortfile)),
-		goxforce.SetUrl(url), goxforce.SetLang(lang))
+		goxforce.SetURL(url), goxforce.SetLang(lang))
 	check(err)
 	if v {
 		goxforce.SetTraceLog(log.New(os.Stderr, "", log.Lshortfile))(c)
@@ -94,13 +95,13 @@ func main() {
 			fmt.Fprintf(os.Stderr, "You must specify the URL\n")
 			os.Exit(1)
 		}
-		res, err = c.Url(q)
+		res, err = c.URL(q)
 	case "urlmalware":
 		if q == "" {
 			fmt.Fprintf(os.Stderr, "You must specify the URL\n")
 			os.Exit(1)
 		}
-		res, err = c.UrlMalware(q)
+		res, err = c.URLMalware(q)
 	case "malware":
 		if q == "" {
 			fmt.Fprintf(os.Stderr, "You must specify the MD5 of the malware\n")
