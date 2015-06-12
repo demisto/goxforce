@@ -87,7 +87,7 @@ func (c *Client) tracef(format string, args ...interface{}) {
 func New(options ...OptionFunc) (*Client, error) {
 	// Set up the client
 	c := &Client{
-		url:  "",
+		url:  DefaultURL,
 		c:    http.DefaultClient,
 		lang: DefaultLang,
 	}
@@ -97,9 +97,6 @@ func New(options ...OptionFunc) (*Client, error) {
 		if err := option(c); err != nil {
 			return nil, err
 		}
-	}
-	if c.url == "" {
-		c.url = DefaultURL
 	}
 	c.tracef("Using URL [%s]\n", c.url)
 
