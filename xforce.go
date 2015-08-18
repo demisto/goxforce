@@ -48,6 +48,7 @@ type Client struct {
 	errorlog *log.Logger  // Optional logger to write errors to
 	tracelog *log.Logger  // Optional logger to write trace and debug data to
 	c        *http.Client // The client to use for requests
+	refresh  time.Time    // When we refreshed the token last
 }
 
 // OptionFunc is a function that configures a Client.
@@ -108,6 +109,7 @@ func New(options ...OptionFunc) (*Client, error) {
 			return nil, err
 		}
 		c.token = token.Token
+		c.refresh = time.Now()
 	}
 
 	return c, nil
@@ -270,6 +272,17 @@ func (c *Client) do(method, rawurl string, params map[string]string, body io.Rea
 		defer resp.Body.Close()
 	}
 	if err = c.handleError(resp); err != nil {
+		// If our token has expired, let's try and refresh it
+		if resp.StatusCode == 401 && c.refresh.Add(time.Hour*48).Before(time.Now()) {
+			c.refresh = time.Now()
+			c.token = ""
+			token, err := c.AnonymousToken()
+			if err != nil {
+				return err
+			}
+			c.token = token.Token
+			return c.do(method, rawurl, params, body, result)
+		}
 		return err
 	}
 	c.dumpResponse(resp)
