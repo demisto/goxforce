@@ -13,16 +13,20 @@ import (
 	"github.com/demisto/goxforce"
 )
 
-var token string
-var url string
-var lang string
-var cmd string
-var q string
-var q2 string
-var v bool
+var (
+	key      string
+	password string
+	url      string
+	lang     string
+	cmd      string
+	q        string
+	q2       string
+	v        bool
+)
 
 func init() {
-	flag.StringVar(&token, "token", os.Getenv("XFE_TOKEN"), "The token to use for X-Force access. Can be provided as an environment variable XFE_TOKEN. If not specified, anonymous access will be used.")
+	flag.StringVar(&key, "key", os.Getenv("XFE_KEY"), "The key to use for X-Force access. Can be provided as an environment variable XFE_KEY.")
+	flag.StringVar(&password, "password", os.Getenv("XFE_PASSWORD"), "The password to use for X-Force access. Can be provided as an environment variable XFE_PASSWORD.")
 	flag.StringVar(&url, "url", goxforce.DefaultURL, "URL of the X-Force API to be used.")
 	flag.StringVar(&lang, "lang", goxforce.DefaultLang, "The language to accept responses in")
 	flag.StringVar(&cmd, "cmd", "", "The command to execute: listApps/searchApp/appDetails/ipr/iprhist/iprmalware/resolve/url/urlmalware/malware/malwarefamily/vulns/searchVulns/xfid/cve")
@@ -45,7 +49,7 @@ func main() {
 		os.Exit(1)
 	}
 	c, err := goxforce.New(goxforce.SetErrorLog(log.New(os.Stderr, "", log.Lshortfile)),
-		goxforce.SetURL(url), goxforce.SetLang(lang))
+		goxforce.SetURL(url), goxforce.SetLang(lang), goxforce.SetCredentials(key, password))
 	check(err)
 	if v {
 		goxforce.SetTraceLog(log.New(os.Stderr, "", log.Lshortfile))(c)

@@ -36,19 +36,19 @@ func (e Error) Error() string {
 }
 
 var (
-	// ErrBadToken is returned when there is no token available for the API
-	ErrBadToken = &Error{"bad_token", "Bad token was provided to the API"}
+	// ErrMissingCredentials is returned when either key or password is not provided
+	ErrMissingCredentials = &Error{"missing_credentials", "You must provide both key and password to use the API"}
 )
 
 // Client interacts with the services provided by X-Force.
 type Client struct {
-	token    string       // The token to use for requests. If not provided, we will try and get an anonymous token.
+	key      string       // The authentication key
+	password string       // the authentication password
 	url      string       // X-Force URL
 	lang     string       // The language to receive responses in
 	errorlog *log.Logger  // Optional logger to write errors to
 	tracelog *log.Logger  // Optional logger to write trace and debug data to
 	c        *http.Client // The client to use for requests
-	refresh  time.Time    // When we refreshed the token last
 }
 
 // OptionFunc is a function that configures a Client.
@@ -76,6 +76,7 @@ func (c *Client) tracef(format string, args ...interface{}) {
 // Example:
 //
 //   client, err := goxforce.New(
+//     goxforce.SetCredentials("some key", "some password"),
 //     goxforce.SetUrl("https://some.url.com:port/"),
 //     goxforce.SetErrorLog(log.New(os.Stderr, "X-Force: ", log.Lshortfile))
 //
@@ -101,30 +102,24 @@ func New(options ...OptionFunc) (*Client, error) {
 	}
 	c.tracef("Using URL [%s]\n", c.url)
 
-	// If no API key was specified
-	if c.token == "" {
-		c.tracef("No token provided, using anonymous\n")
-		token, err := c.AnonymousToken()
-		if err != nil {
-			return nil, err
-		}
-		c.token = token.Token
-		c.refresh = time.Now()
+	if c.key == "" || c.password == "" {
+		c.errorf("Missing credentials")
+		return nil, ErrMissingCredentials
 	}
-
 	return c, nil
 }
 
 // Initialization functions
 
-// SetToken sets the X-Force API token to use
-func SetToken(token string) OptionFunc {
+// SetCredentials sets the X-Force API credentials to use (key and password)
+// Credentials can be generated from the user profile under https://exchange.xforce.ibmcloud.com/
+func SetCredentials(key string, password string) OptionFunc {
 	return func(c *Client) error {
-		if token == "" {
-			c.errorf("%v\n", ErrBadToken)
-			return ErrBadToken
+		if key == "" || password == "" {
+			c.errorf("%v\n", ErrMissingCredentials)
+			return ErrMissingCredentials
 		}
-		c.token = token
+		c.key, c.password = key, password
 		return nil
 	}
 }
@@ -248,13 +243,11 @@ func (c *Client) do(method, rawurl string, params map[string]string, body io.Rea
 	if err != nil {
 		return err
 	}
-	if c.token != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
-	}
 	if c.lang != "" {
 		req.Header.Set("Accept-Language", c.lang)
 	}
 	req.Header.Set("Accept", "application/json")
+	req.SetBasicAuth(c.key, c.password)
 	var t time.Time
 	if c.tracelog != nil {
 		c.dumpRequest(req)
@@ -272,17 +265,6 @@ func (c *Client) do(method, rawurl string, params map[string]string, body io.Rea
 		defer resp.Body.Close()
 	}
 	if err = c.handleError(resp); err != nil {
-		// If our token has expired, let's try and refresh it
-		if resp.StatusCode == 401 && c.refresh.Add(time.Hour*48).Before(time.Now()) {
-			c.refresh = time.Now()
-			c.token = ""
-			token, err := c.AnonymousToken()
-			if err != nil {
-				return err
-			}
-			c.token = token.Token
-			return c.do(method, rawurl, params, body, result)
-		}
 		return err
 	}
 	c.dumpResponse(resp)
@@ -295,6 +277,12 @@ func (c *Client) do(method, rawurl string, params map[string]string, body io.Rea
 			}
 		default:
 			if err = json.NewDecoder(resp.Body).Decode(result); err != nil {
+				if c.errorlog != nil {
+					out, err := httputil.DumpResponse(resp, true)
+					if err == nil {
+						c.errorf("%s\n", string(out))
+					}
+				}
 				return err
 			}
 		}
@@ -304,9 +292,9 @@ func (c *Client) do(method, rawurl string, params map[string]string, body io.Rea
 
 // Structs for responses
 
-// AuthResp holds the response to the auth request
-type AuthResp struct {
-	Token string `json:"token"`
+// APIKeyResp holds the response to the apiKey request
+type APIKeyResp struct {
+	APIKey string `json:"apiKey"`
 }
 
 // AppResp holds the response for the InternetAppProfiles request
@@ -399,24 +387,43 @@ type MX struct {
 	Priority int    `json:"priority"`
 }
 
+// PassiveRecord holds a record for passive resolve
+type PassiveRecord struct {
+	Value      string    `json:"value"`
+	Type       string    `json:"type"`
+	RecordType string    `json:"recordType"`
+	First      time.Time `json:"first"`
+	Last       time.Time `json:"last"`
+}
+
+// PassiveResp holds the response for passive resolve
+type PassiveResp struct {
+	Query   string          `json:"query"`
+	Records []PassiveRecord `json:"records"`
+}
+
 // ResolveResp is the response to the Resolve request
 type ResolveResp struct {
-	A    []string
-	AAAA []string
-	TXT  []string
-	MX   []MX
+	A       []string
+	AAAA    []string
+	TXT     []string
+	MX      []MX
+	RDNS    []string
+	Passive PassiveResp
 }
 
 // URL holds URL details
 type URL struct {
-	URL   string          `json:"url"`
-	Cats  map[string]bool `json:"cats"`
-	Score float32         `json:"score"`
+	URL                  string            `json:"url"`
+	Cats                 map[string]bool   `json:"cats"`
+	CategoryDescriptions map[string]string `json:"categoryDescriptions"`
+	Score                float32           `json:"score"`
 }
 
 // URLResp holds the response to the URL request
 type URLResp struct {
-	Result URL `json:"result"`
+	Result     URL   `json:"result"`
+	Associated []URL `json:"associated"`
 }
 
 // URLMalwareResp holds the response to the UrlMalware request
@@ -493,6 +500,7 @@ type MalwareResp struct {
 
 // MalwareFamilyResp is the response to the malware family request
 type MalwareFamilyResp struct {
+	Count     int           `json:"count"`
 	FirstSeen time.Time     `json:"firstseen"`
 	LastSeen  time.Time     `json:"lastseen"`
 	Family    []string      `json:"family"`
@@ -553,10 +561,67 @@ type VulnerabilitySearchResp struct {
 	Rows      []Vulnerability `json:"rows"`
 }
 
-// AnonymousToken request - See https://xforce-api.mybluemix.net/doc/#!/Authentication/auth_anonymousToken_get
-func (c *Client) AnonymousToken() (*AuthResp, error) {
-	var result AuthResp
-	err := c.do("GET", "auth/anonymousToken", nil, nil, &result)
+// UserProfileResp is the response to a UserProfile request
+type UserProfileResp struct {
+	Statistics struct {
+		NumberOfCollections int       `json:"numberOfCollections"`
+		MemberSince         time.Time `json:"memberSince"`
+		NumberOfComments    int       `json:"numberOfComments"`
+	} `json:"statistics"`
+}
+
+// VersionResp is the response to a Version request
+type VersionResp struct {
+	Build   string    `json:"build"`
+	Created time.Time `json:"created"`
+}
+
+// Product describes a product for signatures
+type Product struct {
+	Name        string    `json:"prodname"`
+	Version     string    `json:"prodversion"`
+	ReleaseDate time.Time `json:"releasedate"`
+}
+
+// Protects describes signature protection against
+type Protects struct {
+	Reported  time.Time `json:"reported"`
+	RiskLevel int       `json:"risk_level"`
+	Title     string    `json:"title"`
+	XFDBID    int       `json:"xfdbid"`
+}
+
+// SignaturesResp is the response to the Signatures request
+type SignaturesResp struct {
+	Type               string    `json:"type"`
+	PAMID              string    `json:"pamid"`
+	Updated            bool      `json:"updated"`
+	ReleaseDate        time.Time `json:"releaseDate"`
+	ShortDesc          string    `json:"shortDesc"`
+	PAMName            string    `json:"pamName"`
+	Description        string    `json:"description"`
+	Priority           int       `json:"priority"`
+	Category           string    `json:"category"`
+	ProductsContaining []Product `json:"products_containing"`
+	ProtectsAgainst    Protects  `json:"protects_against"`
+	Covers             struct {
+		TotalRows int        `json:"total_rows"`
+		Rows      []Protects `json:"rows"`
+	} `json:"covers"`
+}
+
+// SignaturesSearchResp is the response to the SignaturesSearch request
+type SignaturesSearchResp struct {
+	TotalRows int              `json:"total_rows"`
+	Bookmark  string           `json:"bookmark"`
+	Rows      []SignaturesResp `json:"rows"`
+}
+
+// APIKey retuns the API key used for the request - used only to check everything is working
+// https://xforce-api.mybluemix.net/doc/#!/Authentication/get_auth_api_key
+func (c *Client) APIKey() (*APIKeyResp, error) {
+	var result APIKeyResp
+	err := c.do("GET", "auth/api_key", nil, nil, &result)
 	if err != nil {
 		return nil, err
 	}
@@ -673,6 +738,16 @@ func (c *Client) MalwareFamilyDetails(name string) (*MalwareFamilyResp, error) {
 	return &result, nil
 }
 
+// MalwareFamilyExtDetails request - See https://xforce-api.mybluemix.net/doc/#!/Malware/get_malware_familyext_family
+func (c *Client) MalwareFamilyExtDetails(name string) (*MalwareFamilyResp, error) {
+	var result MalwareFamilyResp
+	err := c.do("GET", "malware/familyext/"+name, nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 // Vulnerabilities request - See https://xforce-api.mybluemix.net/doc/#!/Vulnerabilities/vulnerabilities__get
 func (c *Client) Vulnerabilities(limit int) ([]Vulnerability, error) {
 	var result []Vulnerability
@@ -717,4 +792,54 @@ func (c *Client) VulnerabilityByCVE(cve string) ([]Vulnerability, error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+// UserProfile request - See https://xforce-api.mybluemix.net/doc/#!/User/get_user_profile
+func (c *Client) UserProfile() (*UserProfileResp, error) {
+	var result UserProfileResp
+	err := c.do("GET", "user/profile", nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// Version request - See https://xforce-api.mybluemix.net/doc/#!/Version_Information/get_version
+func (c *Client) Version() (*VersionResp, error) {
+	var result VersionResp
+	err := c.do("GET", "version", nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// Signatures request - See https://xforce-api.mybluemix.net/doc/#!/Signatures/get_signatures_pamId
+func (c *Client) Signatures(pamID string) (*SignaturesResp, error) {
+	var result SignaturesResp
+	err := c.do("GET", "signatures/"+pamID, nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// SignaturesSearch request - See https://xforce-api.mybluemix.net/doc/#!/Signatures/get_signatures_fulltext
+func (c *Client) SignaturesSearch(q string) (*SignaturesSearchResp, error) {
+	var result SignaturesSearchResp
+	err := c.do("GET", "signatures/fulltext", map[string]string{"q": q}, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// SignaturesXPU request - See https://xforce-api.mybluemix.net/doc/#!/Signatures/get_signatures_xpu_xpu
+func (c *Client) SignaturesXPU(xpu string) (*SignaturesSearchResp, error) {
+	var result SignaturesSearchResp
+	err := c.do("GET", "signatures/xpu/"+xpu, nil, nil, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
 }

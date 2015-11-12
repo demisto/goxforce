@@ -1,6 +1,9 @@
 package goxforce
 
 import (
+	"flag"
+	"log"
+	"os"
 	"testing"
 )
 
@@ -10,8 +13,22 @@ func check(t *testing.T, err error) {
 	}
 }
 
+var (
+	key      string
+	password string
+)
+
+func init() {
+	flag.StringVar(&key, "key", os.Getenv("XFE_KEY"), "The key to use for X-Force access. Can be provided as an environment variable XFE_KEY.")
+	flag.StringVar(&password, "password", os.Getenv("XFE_PASSWORD"), "The password to use for X-Force access. Can be provided as an environment variable XFE_PASSWORD.")
+}
+
+func newClient() (*Client, error) {
+	return New(SetCredentials(key, password), SetErrorLog(log.New(os.Stderr, "", log.Lshortfile)))
+}
+
 func TestInternetAppProfiles(t *testing.T) {
-	c, err := New()
+	c, err := newClient()
 	check(t, err)
 	r, err := c.InternetAppProfiles()
 	check(t, err)
@@ -21,7 +38,7 @@ func TestInternetAppProfiles(t *testing.T) {
 }
 
 func TestInternetAppsSearch(t *testing.T) {
-	c, err := New()
+	c, err := newClient()
 	check(t, err)
 	r, err := c.InternetAppsSearch("youtube.com")
 	check(t, err)
@@ -31,7 +48,7 @@ func TestInternetAppsSearch(t *testing.T) {
 }
 
 func TestInternetAppByName(t *testing.T) {
-	c, err := New()
+	c, err := newClient()
 	check(t, err)
 	r, err := c.InternetAppByName("youtube")
 	check(t, err)
@@ -41,7 +58,7 @@ func TestInternetAppByName(t *testing.T) {
 }
 
 func TestIPR(t *testing.T) {
-	c, err := New()
+	c, err := newClient()
 	check(t, err)
 	r, err := c.IPR("72.52.4.119")
 	check(t, err)
@@ -51,7 +68,7 @@ func TestIPR(t *testing.T) {
 }
 
 func TestIPRHistory(t *testing.T) {
-	c, err := New()
+	c, err := newClient()
 	check(t, err)
 	r, err := c.IPRHistory("72.52.4.119")
 	check(t, err)
@@ -61,7 +78,7 @@ func TestIPRHistory(t *testing.T) {
 }
 
 func TestIPRMalware(t *testing.T) {
-	c, err := New()
+	c, err := newClient()
 	check(t, err)
 	r, err := c.IPRMalware("72.52.4.119")
 	check(t, err)
@@ -71,7 +88,7 @@ func TestIPRMalware(t *testing.T) {
 }
 
 func TestResolve(t *testing.T) {
-	c, err := New()
+	c, err := newClient()
 	check(t, err)
 	r, err := c.Resolve("http://www.e-realize.com/netenum4941b.exe")
 	check(t, err)
@@ -81,9 +98,9 @@ func TestResolve(t *testing.T) {
 }
 
 func TestURL(t *testing.T) {
-	c, err := New()
+	c, err := newClient()
 	check(t, err)
-	r, err := c.URL("http://www.e-realize.com/netenum4941b.exe")
+	r, err := c.URL("http://mediaget.com")
 	check(t, err)
 	if r.Result.URL == "" || len(r.Result.Cats) == 0 {
 		t.Errorf("Could not get URL reputation - %v\n", r)
@@ -91,9 +108,9 @@ func TestURL(t *testing.T) {
 }
 
 func TestURLMalware(t *testing.T) {
-	c, err := New()
+	c, err := newClient()
 	check(t, err)
-	r, err := c.URLMalware("mediaget.com")
+	r, err := c.URLMalware("http://mediaget.com")
 	check(t, err)
 	if len(r.Malware) == 0 {
 		t.Errorf("Could not get URL malware - %v\n", r)
@@ -101,7 +118,7 @@ func TestURLMalware(t *testing.T) {
 }
 
 func TestMalwareDetails(t *testing.T) {
-	c, err := New()
+	c, err := newClient()
 	check(t, err)
 	r, err := c.MalwareDetails("3018E99857F31A59E0777396AE634A8F")
 	check(t, err)
@@ -111,7 +128,7 @@ func TestMalwareDetails(t *testing.T) {
 }
 
 func TestMalwareFamilyDetails(t *testing.T) {
-	c, err := New()
+	c, err := newClient()
 	check(t, err)
 	r, err := c.MalwareFamilyDetails("Worm.NetSky-14")
 	check(t, err)
@@ -121,7 +138,7 @@ func TestMalwareFamilyDetails(t *testing.T) {
 }
 
 func TestVulnerabilities(t *testing.T) {
-	c, err := New()
+	c, err := newClient()
 	check(t, err)
 	r, err := c.Vulnerabilities(10)
 	check(t, err)
@@ -131,7 +148,7 @@ func TestVulnerabilities(t *testing.T) {
 }
 
 func TestVulnerabilitiesFullText(t *testing.T) {
-	c, err := New()
+	c, err := newClient()
 	check(t, err)
 	r, err := c.VulnerabilitiesFullText("Heartbleed", "")
 	check(t, err)
@@ -141,7 +158,7 @@ func TestVulnerabilitiesFullText(t *testing.T) {
 }
 
 func TestVulnerabilityByXFID(t *testing.T) {
-	c, err := New()
+	c, err := newClient()
 	check(t, err)
 	r, err := c.VulnerabilityByXFID(92744)
 	check(t, err)
@@ -151,11 +168,31 @@ func TestVulnerabilityByXFID(t *testing.T) {
 }
 
 func TestVulnerabilityByCVE(t *testing.T) {
-	c, err := New()
+	c, err := newClient()
 	check(t, err)
 	r, err := c.VulnerabilityByCVE("CVE-2014-2601")
 	check(t, err)
 	if len(r) == 0 {
 		t.Errorf("Did not find vulnerability by CVE - %v\n", r)
+	}
+}
+
+func TestVersion(t *testing.T) {
+	c, err := newClient()
+	check(t, err)
+	v, err := c.Version()
+	check(t, err)
+	if v.Build == "" {
+		t.Errorf("Did not retrieve the version - %v\n", v)
+	}
+}
+
+func TestUserProfile(t *testing.T) {
+	c, err := newClient()
+	check(t, err)
+	p, err := c.UserProfile()
+	check(t, err)
+	if p.Statistics.MemberSince.Year() < 2015 {
+		t.Errorf("Did not retrieve the user profile - %v\n", p)
 	}
 }
