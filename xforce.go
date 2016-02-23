@@ -20,7 +20,7 @@ import (
 
 const (
 	// DefaultURL is the URL for the API endpoint
-	DefaultURL = "https://xforce-api.mybluemix.net:443/"
+	DefaultURL = "https://api.xforce.ibmcloud.com/"
 	// DefaultLang is the default language for the returned data
 	DefaultLang = "en"
 )
