@@ -406,7 +406,7 @@ type PassiveResp struct {
 type ResolveResp struct {
 	A       []string
 	AAAA    []string
-	TXT     []string
+	TXT     [][]string
 	MX      []MX
 	RDNS    []string
 	Passive PassiveResp
