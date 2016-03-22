@@ -97,6 +97,16 @@ func TestResolve(t *testing.T) {
 	}
 }
 
+func TestResolveTXT(t *testing.T) {
+	c, err := newClient()
+	check(t, err)
+	r, err := c.Resolve("google.com")
+	check(t, err)
+	if len(r.A) == 0 {
+		t.Errorf("Could not get resolve URL - %v\n", r)
+	}
+}
+
 func TestURL(t *testing.T) {
 	c, err := newClient()
 	check(t, err)
